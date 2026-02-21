@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MoodIA – Plataforma de Acompañamiento Emocional</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=DM+Serif+Display:ital@0;1&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2230;
+    --accent: #5b8dee;
+    --accent2: #7ec8a4;
+    --warn: #f0a04b;
+    --danger: #e05c6e;
+    --text: #e8edf5;
+    --muted: #8b95a6;
+    --border: #2a3347;
+    --radius: 16px;
+    --shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Sora', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background orbs */
+  body::before {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(91,141,238,0.12) 0%, transparent 70%);
+    top: -200px; right: -200px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(126,200,164,0.1) 0%, transparent 70%);
+    bottom: -100px; left: -100px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ─── NAV ─── */
+  nav {
+    position: sticky; top: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 32px;
+    background: rgba(13,17,23,0.85);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.3rem; }
+  .logo span { color: var(--accent); }
+  .logo-dot { width: 10px; height: 10px; background: var(--accent2); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.3)} }
+
+  nav .nav-tabs { display: flex; gap: 8px; }
+  .tab-btn {
+    background: none; border: 1px solid transparent; color: var(--muted);
+    padding: 8px 18px; border-radius: 50px; cursor: pointer;
+    font-family: 'Sora', sans-serif; font-size: 0.85rem; transition: all 0.2s;
+  }
+  .tab-btn:hover { color: var(--text); border-color: var(--border); }
+  .tab-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* ─── SCREENS ─── */
+  .screen { display: none; padding: 40px 24px; max-width: 900px; margin: 0 auto; position: relative; z-index: 1; }
+  .screen.active { display: block; animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  /* ─── HERO / DASHBOARD ─── */
+  .hero-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    line-height: 1.15;
+    margin-bottom: 16px;
+  }
+  .hero-title em { color: var(--accent); font-style: italic; }
+  .hero-sub { color: var(--muted); font-size: 1rem; line-height: 1.7; max-width: 520px; margin-bottom: 32px; }
+
+  .stats-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 36px; }
+  .stat-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    transition: transform 0.2s, border-color 0.2s;
+  }
+  .stat-card:hover { transform: translateY(-3px); border-color: var(--accent); }
+  .stat-val { font-size: 2rem; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 0.8rem; color: var(--muted); margin-top: 4px; }
+
+  /* Calendar strip */
+  .cal-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px; margin-bottom: 32px; }
+  .cal-day {
+    min-width: 52px; padding: 12px 8px; border-radius: 12px;
+    text-align: center; cursor: pointer; border: 1px solid var(--border);
+    background: var(--surface); transition: all 0.2s; flex-shrink: 0;
+  }
+  .cal-day .day-name { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+  .cal-day .day-num { font-size: 1.1rem; font-weight: 600; margin: 4px 0; }
+  .cal-day .day-emoji { font-size: 1rem; }
+  .cal-day.today { border-color: var(--accent); background: rgba(91,141,238,0.1); }
+  .cal-day.has-entry::after { content:''; display:block; width:6px; height:6px; background:var(--accent2); border-radius:50%; margin: 4px auto 0; }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 28px; margin-bottom: 20px;
+    box-shadow: var(--shadow);
+  }
+  .card-title { font-size: 1.1rem; font-weight: 600; margin-bottom: 18px; display: flex; align-items: center; gap: 8px; }
+  .card-title .badge {
+    font-size: 0.7rem; background: rgba(91,141,238,0.2); color: var(--accent);
+    padding: 3px 10px; border-radius: 50px; font-weight: 500;
+  }
+
+  /* ─── EMOTION REGISTER ─── */
+  .event-bar {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--surface2); border-radius: 10px; padding: 12px 16px; margin-bottom: 24px;
+    border: 1px solid var(--border);
+  }
+  .event-icon { font-size: 1.3rem; }
+  .event-text { flex: 1; }
+  .event-name { font-weight: 600; font-size: 0.95rem; }
+  .event-time { font-size: 0.78rem; color: var(--muted); }
+
+  .emo-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+  @media(max-width:500px) { .emo-grid { grid-template-columns: repeat(2,1fr); } }
+  .emo-btn {
+    background: var(--surface2); border: 2px solid var(--border);
+    border-radius: 14px; padding: 18px 8px; cursor: pointer;
+    text-align: center; transition: all 0.2s; color: var(--text);
+  }
+  .emo-btn:hover { border-color: var(--accent); transform: scale(1.04); }
+  .emo-btn.selected { border-color: var(--accent); background: rgba(91,141,238,0.15); }
+  .emo-btn .emo-icon { font-size: 2rem; display: block; margin-bottom: 6px; }
+  .emo-btn .emo-name { font-size: 0.82rem; font-weight: 500; }
+
+  /* Slider */
+  .slider-wrap { margin-bottom: 24px; }
+  .slider-label { display: flex; justify-content: space-between; font-size: 0.82rem; color: var(--muted); margin-bottom: 8px; }
+  .slider-val { font-size: 1.4rem; font-weight: 700; color: var(--accent); text-align: center; margin-bottom: 8px; }
+  input[type=range] {
+    width: 100%; height: 6px; appearance: none;
+    background: linear-gradient(to right, var(--accent2), var(--accent));
+    border-radius: 3px; outline: none; cursor: pointer;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    appearance: none; width: 22px; height: 22px;
+    background: var(--accent); border-radius: 50%;
+    box-shadow: 0 0 0 4px rgba(91,141,238,0.25);
+  }
+
+  textarea {
+    width: 100%; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px; color: var(--text); font-family: 'Sora', sans-serif;
+    font-size: 0.9rem; resize: none; outline: none; transition: border-color 0.2s;
+    margin-bottom: 20px;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .char-count { text-align: right; font-size: 0.75rem; color: var(--muted); margin-top: -16px; margin-bottom: 20px; }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 13px 28px; border-radius: 50px; border: none;
+    font-family: 'Sora', sans-serif; font-weight: 600; font-size: 0.9rem;
+    cursor: pointer; transition: all 0.2s; text-decoration: none;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: #4a7de0; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(91,141,238,0.4); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ─── ALERT / TOAST ─── */
+  .alert {
+    padding: 12px 16px; border-radius: 10px; font-size: 0.85rem;
+    margin-bottom: 16px; border-left: 4px solid;
+    display: none;
+  }
+  .alert.show { display: block; animation: fadeIn 0.3s; }
+  .alert-error { background: rgba(224,92,110,0.15); border-color: var(--danger); color: #f08090; }
+  .alert-success { background: rgba(126,200,164,0.15); border-color: var(--accent2); color: var(--accent2); }
+  .alert-info { background: rgba(91,141,238,0.15); border-color: var(--accent); color: #90b4f0; }
+
+  /* ─── AI CHAT ─── */
+  .chat-wrap {
+    display: flex; flex-direction: column; gap: 14px;
+    max-height: 420px; overflow-y: auto; padding: 4px 2px;
+    margin-bottom: 20px;
+  }
+  .chat-wrap::-webkit-scrollbar { width: 4px; }
+  .chat-wrap::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .msg {
+    display: flex; gap: 12px; animation: fadeIn 0.4s ease;
+  }
+  .msg.user { flex-direction: row-reverse; }
+  .msg-avatar {
+    width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center; font-size: 1rem;
+  }
+  .msg.ai .msg-avatar { background: rgba(91,141,238,0.2); border: 1px solid var(--accent); }
+  .msg.user .msg-avatar { background: rgba(126,200,164,0.2); border: 1px solid var(--accent2); }
+  .msg-bubble {
+    max-width: 75%; padding: 14px 18px; border-radius: 18px; font-size: 0.88rem; line-height: 1.65;
+  }
+  .msg.ai .msg-bubble { background: var(--surface2); border: 1px solid var(--border); border-top-left-radius: 4px; }
+  .msg.user .msg-bubble { background: var(--accent); color: #fff; border-top-right-radius: 4px; }
+
+  .disclaimer {
+    font-size: 0.75rem; color: var(--warn); background: rgba(240,160,75,0.1);
+    border: 1px solid rgba(240,160,75,0.3); border-radius: 8px;
+    padding: 8px 12px; margin-bottom: 16px; text-align: center;
+  }
+
+  .chat-input-row { display: flex; gap: 10px; }
+  .chat-input-row input {
+    flex: 1; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 50px; padding: 12px 20px; color: var(--text);
+    font-family: 'Sora', sans-serif; font-size: 0.9rem; outline: none; transition: border-color 0.2s;
+  }
+  .chat-input-row input:focus { border-color: var(--accent); }
+  .send-btn {
+    width: 46px; height: 46px; border-radius: 50%; border: none;
+    background: var(--accent); color: #fff; font-size: 1.1rem;
+    cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center;
+  }
+  .send-btn:hover { background: #4a7de0; transform: scale(1.1); }
+
+  /* ─── REPORTS ─── */
+  .report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .report-bar { margin-bottom: 16px; }
+  .report-bar-label { display: flex; justify-content: space-between; font-size: 0.82rem; margin-bottom: 6px; }
+  .bar-track { height: 10px; background: var(--surface2); border-radius: 5px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 5px; transition: width 1s ease; }
+
+  .pie-wrap { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+  .pie-chart {
+    width: 120px; height: 120px; border-radius: 50%;
+    background: conic-gradient(var(--accent2) 0% 45%, var(--warn) 45% 80%, var(--danger) 80% 100%);
+    flex-shrink: 0;
+  }
+  .pie-legend { display: flex; flex-direction: column; gap: 8px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ─── TYPING ─── */
+  .typing { display: flex; gap: 5px; padding: 14px 18px; background: var(--surface2); border: 1px solid var(--border); border-radius: 18px; border-top-left-radius: 4px; width: fit-content; }
+  .typing span { width: 7px; height: 7px; background: var(--muted); border-radius: 50%; animation: bounce 1.2s infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+
+  /* ─── HISTORY TABLE ─── */
+  .history-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .history-table th { background: var(--surface2); padding: 12px 16px; text-align: left; color: var(--muted); font-weight: 500; border-bottom: 1px solid var(--border); }
+  .history-table td { padding: 12px 16px; border-bottom: 1px solid rgba(42,51,71,0.5); }
+  .history-table tr:hover td { background: rgba(91,141,238,0.05); }
+
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 50px; font-size: 0.72rem; font-weight: 500; }
+  .tag-pos { background: rgba(126,200,164,0.2); color: var(--accent2); }
+  .tag-neg { background: rgba(224,92,110,0.2); color: var(--danger); }
+  .tag-neu { background: rgba(139,149,166,0.2); color: var(--muted); }
+
+  /* ─── MODAL OVERLAY ─── */
+  .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.7); z-index:200; align-items:center; justify-content:center; backdrop-filter:blur(4px); }
+  .modal-overlay.open { display:flex; animation:fadeIn 0.3s; }
+  .modal { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:36px; max-width:480px; width:90%; text-align:center; }
+  .modal-emoji { font-size: 3.5rem; margin-bottom: 16px; display:block; }
+  .modal h2 { font-family:'DM Serif Display',serif; font-size:1.6rem; margin-bottom: 10px; }
+  .modal p { color:var(--muted); font-size:0.9rem; line-height:1.7; margin-bottom:24px; }
+
+  /* Responsive */
+  @media(max-width:600px) {
+    nav { padding: 12px 16px; }
+    .screen { padding: 24px 16px; }
+    .nav-tabs .tab-btn span { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    <span>Mood</span>IA
+  </div>
+  <div class="nav-tabs">
+    <button class="tab-btn active" onclick="showScreen('dashboard')">🏠 <span>Inicio</span></button>
+    <button class="tab-btn" onclick="showScreen('register')">➕ <span>Registrar</span></button>
+    <button class="tab-btn" onclick="showScreen('ai')">🤖 <span>IA</span></button>
+    <button class="tab-btn" onclick="showScreen('reports')">📊 <span>Reportes</span></button>
+    <button class="tab-btn" onclick="showScreen('history')">📋 <span>Historial</span></button>
+  </div>
+</nav>
+
+<!-- ─── DASHBOARD ─── -->
+<div id="screen-dashboard" class="screen active">
+  <div class="hero-title">Tu bienestar<br>emocional <em>importa</em></div>
+  <div class="hero-sub">MoodIA te acompaña a identificar, registrar y reflexionar sobre tus emociones usando inteligencia artificial.</div>
+  <div class="alert alert-info show" id="dash-alert">⚠️ Esta herramienta <strong>no sustituye atención psicológica profesional</strong>. Es un espacio de acompañamiento y autoconocimiento.</div>
+
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val" id="stat-total">0</div>
+      <div class="stat-label">Registros totales</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-streak">0</div>
+      <div class="stat-label">Días seguidos</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-emo">–</div>
+      <div class="stat-label">Emoción más frecuente</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="stat-avg">–</div>
+      <div class="stat-label">Nivel promedio</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📅 Calendario emocional – Febrero 2026</div>
+    <div class="cal-strip" id="cal-strip"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ Acciones rápidas</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <button class="btn btn-primary" onclick="showScreen('register')">➕ Registrar emoción</button>
+      <button class="btn btn-secondary" onclick="showScreen('ai')">🤖 Hablar con IA</button>
+      <button class="btn btn-secondary" onclick="showScreen('reports')">📊 Ver reportes</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── REGISTER ─── -->
+<div id="screen-register" class="screen">
+  <div class="card">
+    <div class="card-title">📝 Registro emocional <span class="badge">Post-actividad</span></div>
+
+    <div class="event-bar">
+      <div class="event-icon">📅</div>
+      <div class="event-text">
+        <div class="event-name" id="reg-event-name">Reunión de equipo</div>
+        <div class="event-time" id="reg-event-time">Hoy · <span id="current-time"></span></div>
+      </div>
+      <button class="btn btn-secondary" onclick="changeEvent()" style="padding:6px 14px;font-size:0.78rem">Cambiar</button>
+    </div>
+
+    <div class="alert alert-error" id="alert-no-emo">⚠️ Por favor selecciona una emoción antes de continuar.</div>
+    <div class="alert alert-error" id="alert-char-limit">⚠️ El comentario no puede exceder 500 caracteres.</div>
+
+    <p style="font-size:0.9rem;color:var(--muted);margin-bottom:14px">¿Cómo te sentiste?</p>
+    <div class="emo-grid" id="emo-grid">
+      <button class="emo-btn" onclick="selectEmo(this,'Feliz','😊','pos')"><span class="emo-icon">😊</span><span class="emo-name">Feliz</span></button>
+      <button class="emo-btn" onclick="selectEmo(this,'Estresado','😤','neg')"><span class="emo-icon">😤</span><span class="emo-name">Estresado</span></button>
+      <button class="emo-btn" onclick="selectEmo(this,'Ansioso','😰','neg')"><span class="emo-icon">😰</span><span class="emo-name">Ansioso</span></button>
+      <button class="emo-btn" onclick="selectEmo(this,'Neutral','😐','neu')"><span class="emo-icon">😐</span><span class="emo-name">Neutral</span></button>
+      <button class="emo-btn" onclick="selectEmo(this,'Motivado','🚀','pos')"><span class="emo-icon">🚀</span><span class="emo-name">Motivado</span></button>
+      <button class="emo-btn" onclick="selectEmo(this,'Frustrado','😞','neg')"><span class="emo-icon">😞</span><span class="emo-name">Frustrado</span></button>
+      <button class="emo-btn" onclick="selectEmo(this,'Tranquilo','😌','pos')"><span class="emo-icon">😌</span><span class="emo-name">Tranquilo</span></button>
+      <button class="emo-btn" onclick="selectEmo(this,'Confundido','🤔','neu')"><span class="emo-icon">🤔</span><span class="emo-name">Confundido</span></button>
+    </div>
+
+    <div class="slider-wrap">
+      <p style="font-size:0.9rem;color:var(--muted);margin-bottom:10px">Nivel de intensidad</p>
+      <div class="slider-val" id="slider-val">3</div>
+      <input type="range" min="1" max="5" value="3" id="intensity-slider" oninput="document.getElementById('slider-val').textContent=this.value">
+      <div class="slider-label"><span>1 (Bajo)</span><span>5 (Alto)</span></div>
+    </div>
+
+    <p style="font-size:0.9rem;color:var(--muted);margin-bottom:10px">Comentario <span style="font-size:0.78rem">(opcional)</span></p>
+    <textarea id="comment" rows="3" maxlength="500" placeholder="¿Qué ocurrió? ¿Cómo te impactó?..." oninput="updateCharCount()"></textarea>
+    <div class="char-count"><span id="char-count">0</span>/500</div>
+
+    <button class="btn btn-primary btn-full" onclick="submitRegister()">✅ Confirmar y activar IA</button>
+  </div>
+</div>
+
+<!-- ─── AI CHAT ─── -->
+<div id="screen-ai" class="screen">
+  <div class="card">
+    <div class="card-title">🤖 Acompañamiento IA <span class="badge">Conversación privada y encriptada</span></div>
+    <div class="disclaimer">⚠️ Esto no constituye diagnóstico clínico. Para apoyo profesional, consulta a un especialista.</div>
+    <div class="chat-wrap" id="chat-wrap"></div>
+    <div class="chat-input-row">
+      <input type="text" id="chat-input" placeholder="Escribe tu respuesta..." onkeydown="if(event.key==='Enter')sendMsg()">
+      <button class="send-btn" onclick="sendMsg()">➤</button>
+    </div>
+    <p style="font-size:0.75rem;color:var(--muted);margin-top:12px;text-align:center">🔒 Historial privado y encriptado. Solo tú puedes verlo.</p>
+  </div>
+</div>
+
+<!-- ─── REPORTS ─── -->
+<div id="screen-reports" class="screen">
+  <div class="card">
+    <div class="card-title">📊 Reportes empresariales <span class="badge">Datos anonimizados del equipo</span></div>
+    <p style="font-size:0.82rem;color:var(--muted);margin-bottom:20px">🔒 Privacidad garantizada. Los datos se presentan de forma agregada; no se puede identificar a individuos específicos. Acceso exclusivo para líderes autorizados.</p>
+
+    <div class="report-grid">
+      <div class="stat-card">
+        <div class="stat-val">87%</div>
+        <div class="stat-label">Usuarios activos esta semana</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--accent2)">45%</div>
+        <div class="stat-label">Emociones positivas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--danger)">20%</div>
+        <div class="stat-label">Emociones negativas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-val" style="color:var(--warn)">3.2</div>
+        <div class="stat-label">Nivel promedio del equipo</div>
+      </div>
+    </div>
+
+    <div class="card-title" style="margin-top:8px">Distribución emocional del equipo</div>
+    <div class="pie-wrap">
+      <div class="pie-chart"></div>
+      <div class="pie-legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--accent2)"></div>Positivas – 45%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--warn)"></div>Neutras – 35%</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--danger)"></div>Negativas – 20%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📈 Tendencia por reunión</div>
+    <div id="bars-container">
+      <div class="report-bar">
+        <div class="report-bar-label"><span>Reunión de equipo (Lun)</span><span style="color:var(--accent2)">70%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:70%;background:var(--accent2)"></div></div>
+      </div>
+      <div class="report-bar">
+        <div class="report-bar-label"><span>Planificación semanal (Mar)</span><span style="color:var(--warn)">55%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:55%;background:var(--warn)"></div></div>
+      </div>
+      <div class="report-bar">
+        <div class="report-bar-label"><span>Stand-up diario (Mié)</span><span style="color:var(--danger)">30%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:30%;background:var(--danger)"></div></div>
+      </div>
+      <div class="report-bar">
+        <div class="report-bar-label"><span>Retrospectiva (Vie)</span><span style="color:var(--accent2)">80%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:80%;background:var(--accent2)"></div></div>
+      </div>
+    </div>
+    <div id="dynamic-bars"></div>
+    <br>
+    <button class="btn btn-primary" onclick="exportPDF()">📄 Exportar Reporte PDF</button>
+  </div>
+</div>
+
+<!-- ─── HISTORY ─── -->
+<div id="screen-history" class="screen">
+  <div class="card">
+    <div class="card-title">📋 Mi historial emocional</div>
+    <table class="history-table">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Actividad</th>
+          <th>Emoción</th>
+          <th>Nivel</th>
+          <th>Tipo</th>
+        </tr>
+      </thead>
+      <tbody id="history-body">
+        <tr>
+          <td>19/02/2026</td>
+          <td>Reunión de equipo</td>
+          <td>😊 Feliz</td>
+          <td>4/5</td>
+          <td><span class="tag tag-pos">Positiva</span></td>
+        </tr>
+        <tr>
+          <td>18/02/2026</td>
+          <td>Stand-up diario</td>
+          <td>😤 Estresado</td>
+          <td>3/5</td>
+          <td><span class="tag tag-neg">Negativa</span></td>
+        </tr>
+        <tr>
+          <td>17/02/2026</td>
+          <td>Planificación</td>
+          <td>🚀 Motivado</td>
+          <td>5/5</td>
+          <td><span class="tag tag-pos">Positiva</span></td>
+        </tr>
+        <tr>
+          <td>16/02/2026</td>
+          <td>Día personal</td>
+          <td>😌 Tranquilo</td>
+          <td>3/5</td>
+          <td><span class="tag tag-pos">Positiva</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <p id="empty-history" style="text-align:center;color:var(--muted);padding:24px;display:none">Aún no tienes registros guardados.</p>
+  </div>
+</div>
+
+<!-- ─── SUCCESS MODAL ─── -->
+<div class="modal-overlay" id="success-modal">
+  <div class="modal">
+    <span class="modal-emoji">✅</span>
+    <h2>¡Registro guardado!</h2>
+    <p>Tu estado emocional ha sido almacenado de forma privada. La IA está lista para acompañarte en tu reflexión.</p>
+    <button class="btn btn-primary" onclick="goToAI()">🤖 Iniciar sesión con IA</button>
+    <button class="btn btn-secondary" style="margin-top:10px;width:100%;justify-content:center" onclick="closeModal()">Volver al inicio</button>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───
+const state = {
+  entries: [],
+  selectedEmo: null,
+  selectedEmoType: null,
+  lastEntry: null,
+  chatHistory: []
+};
+
+// AI responses
+const aiResponses = {
+  initial: {
+    'Feliz':     "¡Me alegra escuchar eso! 😊 La colaboración efectiva es clave para el bienestar laboral. ¿Hubo algo específico que te hizo sentir tan bien en esta actividad?",
+    'Motivado':  "🚀 ¡Qué energía tan positiva! Esa motivación es un recurso valioso. ¿Qué fue lo que más te inspiró?",
+    'Tranquilo': "😌 La tranquilidad es señal de un buen equilibrio. ¿Qué crees que contribuyó a ese estado?",
+    'Estresado': "Entiendo que fue una situación difícil. 🌿 El estrés nos indica que algo importante está en juego. ¿Qué parte de la actividad te generó más tensión?",
+    'Ansioso':   "La ansiedad puede ser incómoda, pero también es una señal de que te importa. 💙 ¿Qué pensamientos surgieron durante la actividad?",
+    'Frustrado': "Gracias por compartirlo. 💙 La frustración a veces viene de expectativas que no se cumplieron. ¿Qué esperabas que fuera diferente?",
+    'Neutral':   "A veces la neutralidad refleja un buen balance. 🌿 ¿Qué aspectos de la actividad llamaron más tu atención?",
+    'Confundido':"La confusión puede ser el primer paso hacia la claridad. 🤔 ¿Qué aspectos te resultaron más complejos o ambiguos?"
+  },
+  followUp: [
+    "Interesante perspectiva. ¿Cómo te gustaría que fuera diferente la próxima vez?",
+    "Eso tiene mucho sentido. ¿Qué acción pequeña podrías tomar hoy para sentirte mejor?",
+    "Gracias por compartir eso. ¿Hay alguien con quien puedas hablar sobre esto?",
+    "Muy reflexivo. Identifica 3 fortalezas personales que usaste hoy. ¿Cuáles serían?",
+    "¿Qué aprendizaje te llevas de esta experiencia?",
+    "🧘 Te sugiero este ejercicio: toma 3 respiraciones profundas y observa cómo cambia tu estado. ¿Cómo te sientes ahora?",
+    "¿Qué necesitarías para sentirte más preparado/a la próxima vez?",
+    "Eso es muy valioso. Recuerda: tus emociones son información, no debilidades. ¿Qué más quieres explorar?"
+  ]
+};
+
+// ─── INIT ───
+window.onload = () => {
+  renderCalendar();
+  updateStats();
+  document.getElementById('current-time').textContent = new Date().toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'});
+  // Start AI with greeting
+  setTimeout(() => {
+    addMsg('ai', '👋 Hola, soy MoodIA. Estoy aquí para acompañarte. ¿Quieres hablar de cómo te sientes hoy, o ya registraste una emoción y quieres reflexionar sobre ella?');
+  }, 400);
+};
+
+// ─── NAVIGATION ───
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  const idx = ['dashboard','register','ai','reports','history'].indexOf(name);
+  document.querySelectorAll('.tab-btn')[idx].classList.add('active');
+}
+
+// ─── CALENDAR ───
+function renderCalendar() {
+  const strip = document.getElementById('cal-strip');
+  const days = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const today = new Date();
+  strip.innerHTML = '';
+  for(let i = -10; i <= 5; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    const el = document.createElement('div');
+    el.className = 'cal-day' + (i === 0 ? ' today' : '');
+    const hasEntry = state.entries.some(e => e.date === d.toDateString()) || (i < 0 && Math.random() > 0.5);
+    if(hasEntry) el.classList.add('has-entry');
+    const emos = ['😊','😤','😌','🚀','😐','😰'];
+    el.innerHTML = `<div class="day-name">${days[d.getDay()]}</div><div class="day-num">${d.getDate()}</div><div class="day-emoji">${hasEntry ? emos[Math.floor(Math.random()*emos.length)] : ''}</div>`;
+    strip.appendChild(el);
+  }
+}
+
+// ─── EMOTION SELECTION ───
+let selectedEmo = null, selectedEmoType = null;
+
+function selectEmo(btn, name, emoji, type) {
+  document.querySelectorAll('.emo-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedEmo = {name, emoji, type};
+  selectedEmoType = type;
+  hideAlert('alert-no-emo');
+}
+
+// ─── CHAR COUNT ───
+function updateCharCount() {
+  const len = document.getElementById('comment').value.length;
+  document.getElementById('char-count').textContent = len;
+  if(len >= 500) showAlert('alert-char-limit');
+  else hideAlert('alert-char-limit');
+}
+
+// ─── REGISTER SUBMIT ───
+function submitRegister() {
+  hideAlert('alert-no-emo');
+  if(!selectedEmo) { showAlert('alert-no-emo'); return; }
+
+  const comment = document.getElementById('comment').value;
+  const intensity = document.getElementById('intensity-slider').value;
+  const eventName = document.getElementById('reg-event-name').textContent;
+
+  const entry = {
+    date: new Date().toDateString(),
+    dateStr: new Date().toLocaleDateString('es-CO'),
+    event: eventName,
+    emo: selectedEmo,
+    intensity: parseInt(intensity),
+    comment
+  };
+
+  state.entries.push(entry);
+  state.lastEntry = entry;
+  updateStats();
+  addHistoryRow(entry);
+
+  // Prepare AI
+  const aiOpening = aiResponses.initial[selectedEmo.name] || aiResponses.initial['Neutral'];
+  state.chatHistory = [{ role: 'ai', text: aiOpening }];
+
+  document.getElementById('success-modal').classList.add('open');
+}
+
+function addHistoryRow(entry) {
+  const tbody = document.getElementById('history-body');
+  const tagClass = entry.emo.type === 'pos' ? 'tag-pos' : entry.emo.type === 'neg' ? 'tag-neg' : 'tag-neu';
+  const tagLabel = entry.emo.type === 'pos' ? 'Positiva' : entry.emo.type === 'neg' ? 'Negativa' : 'Neutral';
+  const tr = document.createElement('tr');
+  tr.innerHTML = `<td>${entry.dateStr}</td><td>${entry.event}</td><td>${entry.emo.emoji} ${entry.emo.name}</td><td>${entry.intensity}/5</td><td><span class="tag ${tagClass}">${tagLabel}</span></td>`;
+  tbody.insertBefore(tr, tbody.firstChild);
+}
+
+function goToAI() {
+  closeModal();
+  showScreen('ai');
+  const chatWrap = document.getElementById('chat-wrap');
+  chatWrap.innerHTML = '';
+  if(state.lastEntry) {
+    addMsg('ai', `Veo que registraste que te sentiste <strong>${state.lastEntry.emo.emoji} ${state.lastEntry.emo.name}</strong> con intensidad <strong>${state.lastEntry.intensity}/5</strong> después de "${state.lastEntry.event}".`);
+    setTimeout(() => addMsg('ai', aiResponses.initial[state.lastEntry.emo.name] || aiResponses.initial['Neutral']), 1200);
+  }
+}
+
+// ─── CHAT ───
+let msgCount = 0;
+function addMsg(role, text) {
+  const wrap = document.getElementById('chat-wrap');
+  const div = document.createElement('div');
+  div.className = 'msg ' + role;
+  div.innerHTML = `<div class="msg-avatar">${role === 'ai' ? '🤖' : '👤'}</div><div class="msg-bubble">${text}</div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function showTyping() {
+  const wrap = document.getElementById('chat-wrap');
+  const div = document.createElement('div');
+  div.className = 'msg ai'; div.id = 'typing-indicator';
+  div.innerHTML = `<div class="msg-avatar">🤖</div><div class="typing"><span></span><span></span><span></span></div>`;
+  wrap.appendChild(div);
+  wrap.scrollTop = wrap.scrollHeight;
+}
+
+function removeTyping() {
+  const el = document.getElementById('typing-indicator');
+  if(el) el.remove();
+}
+
+function sendMsg() {
+  const input = document.getElementById('chat-input');
+  const text = input.value.trim();
+  if(!text) return;
+  addMsg('user', text);
+  input.value = '';
+  showTyping();
+  const responses = aiResponses.followUp;
+  const reply = responses[msgCount % responses.length];
+  msgCount++;
+  setTimeout(() => {
+    removeTyping();
+    addMsg('ai', reply);
+  }, 1400 + Math.random()*600);
+}
+
+// ─── STATS ───
+function updateStats() {
+  const total = state.entries.length + 4; // base + demo
+  document.getElementById('stat-total').textContent = total;
+  document.getElementById('stat-streak').textContent = Math.min(total, 5);
+
+  if(state.entries.length > 0) {
+    const last = state.entries[state.entries.length - 1];
+    document.getElementById('stat-emo').textContent = last.emo.emoji;
+    const avg = (state.entries.reduce((s,e) => s + e.intensity, 0) / state.entries.length).toFixed(1);
+    document.getElementById('stat-avg').textContent = avg;
+  } else {
+    document.getElementById('stat-emo').textContent = '😊';
+    document.getElementById('stat-avg').textContent = '3.2';
+  }
+
+  // Update report bars dynamically
+  const dynBars = document.getElementById('dynamic-bars');
+  if(state.entries.length > 0) {
+    const last = state.entries[state.entries.length - 1];
+    const pct = (last.intensity / 5 * 100).toFixed(0);
+    const color = last.emo.type === 'pos' ? 'var(--accent2)' : last.emo.type === 'neg' ? 'var(--danger)' : 'var(--warn)';
+    dynBars.innerHTML = `<div class="report-bar"><div class="report-bar-label"><span>Tu último registro (${last.event})</span><span style="color:${color}">${pct}%</span></div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${color}"></div></div></div>`;
+  }
+}
+
+// ─── HELPERS ───
+function showAlert(id) { document.getElementById(id).classList.add('show'); }
+function hideAlert(id) { document.getElementById(id).classList.remove('show'); }
+function closeModal() { document.getElementById('success-modal').classList.remove('open'); }
+
+function changeEvent() {
+  const events = ['Reunión de equipo','Stand-up diario','Planificación semanal','Retrospectiva','1:1 con líder','Taller de formación','Actividad personal'];
+  const pick = events[Math.floor(Math.random()*events.length)];
+  document.getElementById('reg-event-name').textContent = pick;
+}
+
+function exportPDF() {
+  alert('📄 Exportando reporte PDF...\n\nEn la versión completa, se generaría un PDF anonimizado con los datos del equipo.\n\n(Funcionalidad de demostración)');
+}
+
+// Reset form after close
+function closeModal() {
+  document.getElementById('success-modal').classList.remove('open');
+  // Reset form
+  selectedEmo = null;
+  document.querySelectorAll('.emo-btn').forEach(b => b.classList.remove('selected'));
+  document.getElementById('comment').value = '';
+  document.getElementById('char-count').textContent = '0';
+  document.getElementById('intensity-slider').value = 3;
+  document.getElementById('slider-val').textContent = '3';
+  showScreen('dashboard');
+}
+</script>
+</body>
+</html>
